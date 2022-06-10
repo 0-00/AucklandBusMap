@@ -1,0 +1,116 @@
+<!DOCTYPE HTML>
+    <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+   integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+   crossorigin=""/>
+        <style>
+            #map {
+                position: fixed;
+                width: 100%;
+                height: 100%;
+                left: 0;
+                top: 0;
+                background: rgba(51,51,51,0.7);
+                z-index: 10;
+            }
+        </style>
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+        integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+        crossorigin=""></script>
+        <script>
+            var speeds_icons = [];
+            var map;
+
+            function decimalToHex(d, padding) {
+                var hex = Number(d).toString(16);
+                padding = typeof (padding) === "undefined" || padding === null ? padding = 2 : padding;
+
+                while (hex.length < padding) {
+                    hex = "0" + hex;
+                }
+
+                return hex;
+            }
+
+            function HSVtoRGB(h, s, v) {
+                var r, g, b, i, f, p, q, t;
+                if (arguments.length === 1) {
+                    s = h.s, v = h.v, h = h.h;
+                }
+                i = Math.floor(h * 6);
+                f = h * 6 - i;
+                p = v * (1 - s);
+                q = v * (1 - f * s);
+                t = v * (1 - (1 - f) * s);
+                switch (i % 6) {
+                    case 0: r = v, g = t, b = p; break;
+                    case 1: r = q, g = v, b = p; break;
+                    case 2: r = p, g = v, b = t; break;
+                    case 3: r = p, g = q, b = v; break;
+                    case 4: r = t, g = p, b = v; break;
+                    case 5: r = v, g = p, b = q; break;
+                }
+                return "#" + decimalToHex(Math.round(r * 255), 2) + decimalToHex(Math.round(g * 255), 2) + decimalToHex(Math.round(b * 255), 2)
+            }
+
+            function routeToColour(route) {
+                return HSVtoRGB(((Number.parseInt(route, 36) * 9389924309) % 255) / 255.0, 0.8, 0.9);
+            }
+
+            function tri (lat, lon, bearing) {
+                scale1 = 1/500
+                scale2 = scale1/2.0
+                dtr = 0.0174533
+                return [[lat + Math.cos((000 + bearing) * dtr) * scale1, lon + Math.sin((000 + bearing) * dtr) * scale1], 
+                        [lat + Math.cos((120 + bearing) * dtr) * scale2, lon + Math.sin((120 + bearing) * dtr) * scale2], 
+                        [lat + Math.cos((240 + bearing) * dtr) * scale2, lon + Math.sin((240 + bearing) * dtr) * scale2]]
+            }
+
+            function loadIcons() {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', 'http://localhost:8080/speeds/', true);
+
+                xhr.onload = function () {
+                    r = JSON.parse(xhr.response);
+                    speeds_icons.forEach(element => {
+                        map.removeLayer(element)
+                    });
+
+                    speeds_icons = [];
+
+                    r.data.forEach(element => {
+                        var icon = L.polyline([[element.lat1, element.lon1], [element.lat2, element.lon2]], {
+                                weight:element.speed/10,
+                                color: 'blue',
+                                opacity: 0.05,
+                                radius: 15,
+                                lineCap: "arcs"
+                            })
+                        icon.addTo(map)
+                        speeds_icons.push(icon);
+                    });
+                };
+                xhr.send(null);
+            }
+
+            window.onload = function() {
+                console.log("loading map")
+                map = L.map('map').setView([-36.85074719198294, 174.76449037536554], 11);
+                L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibmVnYXRpdmV4ZXIwIiwiYSI6ImNreDJsMjZteTFwbXgyd3E5N3FlZDA1ZjQifQ.gGS9ax_qNJeUumvLW-zI0A', {
+                    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+                    maxZoom: 18,
+                    id: 'mapbox/streets-v11',
+                    tileSize: 512,
+                    zoomOffset: -1,
+                    accessToken: 'your.mapbox.access.token'
+                }).addTo(map);
+
+                loadIcons();
+                setInterval(loadIcons, 500);
+            }
+        </script>
+    </head>
+    <body>
+        <div id="map"></div>
+    </body>
+</html>

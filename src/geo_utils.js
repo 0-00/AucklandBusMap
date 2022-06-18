@@ -10,6 +10,6 @@ function measure(lat1, lon1, lat2, lon2){  // generally used geo measurement fun
     return d * 1000; // meters
 }
 
-module.export = {
+module.exports = {
     measure
 }

@@ -14,8 +14,8 @@ const sum = (values) => {
   return values.reduce((partialSum, a) => partialSum + a, 0);
 };
 
-const avg = (values) => {
-  return values.reduce((partialSum, a) => partialSum + a, 0) / moved_vehicles;
+const avg = (values, denom) => {
+  return values.reduce((partialSum, a) => partialSum + a, 0) / denom;
 };
 
 const min = (values) => {
@@ -85,16 +85,16 @@ const build_vehicle_entry = (vehicle) => {
 };
 
 function log_delta(delta) {
-  const moved_vehicles = Object.keys(delta).length;
+  const moved_vehicles = delta.length;
 
-  const vehicle_distances = Object.keys(delta).map((entry) => {
+  const vehicle_distances = delta.map((entry) => {
     let timestamps = Object.keys(vehicles[entry]);
     let pos1 = vehicles[entry][timestamps[timestamps.length - 1]];
     let pos2 = vehicles[entry][timestamps[timestamps.length - 2]];
     return measure(pos1.lat, pos1.lon, pos2.lat, pos2.lon);
   });
 
-  const vehicle_times = Object.keys(delta).map((entry) => {
+  const vehicle_times = delta.map((entry) => {
     let timestamps = Object.keys(vehicles[entry]);
     return (
       Number(timestamps[timestamps.length - 1]) -
@@ -125,7 +125,7 @@ function log_delta(delta) {
       "min:",
       parseInt(min(vehicle_times)),
       "avg:",
-      parseInt(avg(vehicle_times)),
+      parseInt(avg(vehicle_times, moved_vehicles)),
       "max:",
       parseInt(max(vehicle_times))
     );
@@ -134,7 +134,7 @@ function log_delta(delta) {
       "min:",
       parseInt(min(vehicle_distances)),
       "avg:",
-      parseInt(avg(vehicle_distances)),
+      parseInt(avg(vehicle_distances, moved_vehicles)),
       "max:",
       parseInt(max(vehicle_distances))
     );
@@ -143,7 +143,7 @@ function log_delta(delta) {
       "min:",
       parseInt(min(vehicle_speeds)),
       "avg:",
-      parseInt(avg(vehicle_speeds)),
+      parseInt(avg(vehicle_speeds, moved_vehicles)),
       "max:",
       parseInt(max(vehicle_speeds))
     );
@@ -186,7 +186,7 @@ function pull_data() {
     .set("Ocp-Apim-Subscription-Key", "d3fc3fa4997b49569eb479e701004670")
     .then((res) => {
       vehicle_response = res.body.response.entity;
-      delta = {};
+      delta = [];
       new_vehicles = [];
 
       vehicle_response.forEach((element) => {
@@ -199,8 +199,7 @@ function pull_data() {
               ) {
                 vehicles[vehicle.vehicle.id][vehicle.timestamp] =
                   build_vehicle_entry(vehicle);
-                delta[vehicle.vehicle.id] =
-                  vehicles[vehicle.vehicle.id][vehicle.timestamp];
+                delta.push(vehicle.vehicle.id);
               }
             } else {
               vehicles[vehicle.vehicle.id] = {};
@@ -213,11 +212,45 @@ function pull_data() {
           }
         }
       });
-      console.log("Data pulled.");
       const ENABLE_REPORTING = false;
+      console.log("Data pulled.");
       if (ENABLE_REPORTING) {
         log_delta(delta);
       }
+
+      delta.map((entry) => {
+        let timestamps = Object.keys(vehicles[entry]);
+        let pos1 = vehicles[entry][timestamps[timestamps.length - 1]];
+        let pos2 = vehicles[entry][timestamps[timestamps.length - 2]];
+        let dist = measure(pos1.lat, pos1.lon, pos2.lat, pos2.lon);
+        let time =
+          Number(timestamps[timestamps.length - 1]) -
+          Number(timestamps[timestamps.length - 2]);
+        let speed = (dist / time) * 3.6; // adjust m/s to km/h
+
+        node_id = anchor_points.query_nearest_point(
+          (pos1.lon + pos2.lon) / 2,
+          (pos1.lat + pos2.lat) / 2
+        );
+
+        bearing = (parseInt(pos1.bearing) + parseInt(pos2.bearing)) / 2;
+
+        bus_route_id = pos1.route;
+
+        console.log(
+          "node_id:",
+          node_id,
+          "time:",
+          time,
+          "speed:",
+          parseInt(speed),
+          "bearing:",
+          bearing,
+          "bus_route_id:",
+          bus_route_id
+        );
+      });
+      console.log("");
     })
     .catch((err) => {
       console.log("Error, aborting...");
@@ -227,6 +260,7 @@ function pull_data() {
 
 console.log("Server Starting...");
 pull_routes()
+  .then(anchor_points.load)
   .then(pull_data)
   .then(() => {
     setInterval(pull_data, 1000);

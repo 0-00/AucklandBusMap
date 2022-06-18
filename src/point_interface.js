@@ -4,12 +4,12 @@ const { QuadTree, Box, Point, Circle } = require("js-quadtree");
 const { measure } = require("./geo_utils.js");
 
 var quadtree;
+let anchor_points = [];
 
-function load_anchor_points() {
+function load() {
   let [max_x, max_y, min_x, min_y] = [-Infinity, -Infinity, Infinity, Infinity];
 
   return new Promise((resolve, reject) => {
-    let anchor_points = [];
     fs.createReadStream("bus_map_dots.csv")
       .pipe(csv())
       .on("data", (row) => {
@@ -21,7 +21,13 @@ function load_anchor_points() {
         anchor_points.push(row);
       })
       .on("end", () => {
-        console.log("Anchor points loaded");
+        console.log(
+          "Anchor points loaded with bounding box",
+          min_x,
+          min_y,
+          max_x,
+          max_y
+        );
         resolve(anchor_points);
       });
   }).then((anchor_points) => {
@@ -33,26 +39,38 @@ function load_anchor_points() {
   });
 }
 
-const QUERY_DIST_LIMIT = 0.005;
+const QUERY_DIST_LIMIT = 100000;
+
+// function query_nearest_point(x, y) {
+//   if (!quadtree) return -1;
+
+//   const points = quadtree.query(new Circle(x, y, QUERY_DIST_LIMIT));
+
+//   if (points.length == 0) return -2;
+
+//   return points.reduce(
+//     (left, right) => {
+//       measure(x, y, left.x, left.y) < measure(x, y, right.x, right.y)
+//         ? left
+//         : right;
+//     },
+//     { x: Infinity, y: Infinity, FID: -3 }
+//   ).FID;
+// }
 
 function query_nearest_point(x, y) {
-  if (!quadtree) return -1;
+  record = anchor_points.reduce((left, right) => {
+    return measure(x, y, left.x, left.y) > measure(x, y, right.x, right.y)
+      ? right
+      : left;
+  });
 
-  const points = quadtree.query(new Circle(x, y, QUERY_DIST_LIMIT));
+  console.log(x, y, measure(x, y, record.x, record.y), record);
 
-  if (points.length == 0) return -2;
-
-  return points.reduce(
-    (left, right) => {
-      measure(x, y, left.x, left.y) < measure(x, y, right.x, right.y)
-        ? left
-        : right;
-    },
-    { x: Infinity, y: Infinity, FID: -3 }
-  ).FID;
+  return record.FID;
 }
 
 module.exports = {
-  load_anchor_points,
+  load,
   query_nearest_point,
 };

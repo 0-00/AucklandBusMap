@@ -93,21 +93,58 @@ function pull_data () {
         return (entry[0] / entry[1]) * 3.6;
       })
 
+      const sum = (values) => {
+        return values.reduce((partialSum, a) => partialSum + a, 0);
+      }
+
       const avg = (values) => {
         return values.reduce((partialSum, a) => partialSum + a, 0) / moved_vehicles;
       }
 
+      const min = (values) => {
+        if (values.length == 0) return Infinity;
+        if (values.length == 1) return values[0];
+        return values.reduce((left, right) => left > right ? right : left, Infinity);
+      }
+
+      const max = (values) => {
+        if (values.length == 0) return -Infinity;
+        if (values.length == 1) return values[0];
+        return values.reduce((left, right) => left < right ? right : left, -Infinity);
+      }
+
+      const aging_count = (eval) => {
+        let timestamps = Object.values(vehicles).map((entry) => {
+            return max(Object.keys(entry)); 
+        })
+        let latestTime = max(timestamps);
+        return sum(timestamps.map((value) => { 
+            return eval(Number(latestTime) - Number(value)) ? 1 : 0
+        }, Infinity));
+      }
+
       console.log("Data pulled.");
       console.log("Update for", moved_vehicles, "vehicles");
-      console.log("Average time since last update for these was", avg(vehicle_times), "seconds");
-      console.log("Average distance travelled since last update for these was", avg(vehicle_distances), "metres");
-      console.log("Average speed since last update for these was", avg(vehicle_speeds), "kmh");
+      if (moved_vehicles > 0) {
+        console.log("TIME (s)     | ", "min:", parseInt(min(vehicle_times)), "avg:", parseInt(avg(vehicle_times)),"max:", parseInt(max(vehicle_times)));
+        console.log("DISTANCE (m) | ", "min:", parseInt(min(vehicle_distances)), "avg:", parseInt(avg(vehicle_distances)),"max:", parseInt(max(vehicle_distances)));
+        console.log("SPEED (kmh)  | ", "min:", parseInt(min(vehicle_speeds)), "avg:", parseInt(avg(vehicle_speeds)),"max:", parseInt(max(vehicle_speeds)));  
+      }
       console.log(new_vehicles.length, "new vehicles discovered\n");
+      console.log("Aging vehicles:")
+      console.log("Less than 5 seconds ", aging_count((value) => value >= 0 && value < 5))
+      console.log("Less than 10 seconds", aging_count((value) => value >= 5 && value < 10))
+      console.log("Less than 30 seconds", aging_count((value) => value >= 10 && value < 30))
+      console.log("Less than 60 seconds", aging_count((value) => value >= 30 && value < 60))
+      console.log("Less than 10 minutes", aging_count((value) => value >= 60 && value < 600))
+      console.log("Less than 30 minutes", aging_count((value) => value >= 600 && value < 1800))
+      console.log("More than 30 minutes", aging_count((value) => value >= 1800))
     })
     .catch(err => {
         console.log("Error, aborting...")
         console.log(err);
     });
+    console.log("")
 }
 
 console.log("Server Starting...");

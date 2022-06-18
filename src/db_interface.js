@@ -13,6 +13,16 @@ const sum_rows = (rows) => {
     return ret / rows.length;
 }
 
+function add_entry (node_id, time, speed, bearing, bus_route_id) {
+    knex().from("speeds").insert({
+        "node_id": node_id,
+        "time": time,
+        "speed": speed,
+        "bearing": bearing,
+        "bus_route_id": bus_route_id
+    });
+}
+
 async function get_average_speed(node_id) {
     const query = knex.from("speeds")
                        .select("speed")
@@ -25,12 +35,16 @@ function close() {
     knex.destroy();
 }
 
-async function main() { 
-    const res = get_average_speed(0).then((ret) => {
-        console.log("output", ret);
-    }).finally(() => {
-        close();
-    });
-}
+// async function main() { 
+//     const res = get_average_speed(0).then((ret) => {
+//         console.log("output", ret);
+//     }).finally(() => {
+//         close();
+//     });
+// }
 
-main();
+module.exports = {
+    add_entry,
+    get_average_speed,
+    close
+}

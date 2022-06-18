@@ -2,9 +2,10 @@
   "name": "aucklandbusmap",
   "version": "1.0.0",
   "description": "",
-  "main": "scraper.js",
+  "main": "src/scraper.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/scraper.js"
   },
   "repository": {
     "type": "git",
@@ -18,7 +19,9 @@
   "homepage": "https://github.com/0-00/AucklandBusMap#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "csv-parser": "^3.0.0",
     "express": "^4.18.1",
+    "fs": "^0.0.1-security",
     "knex": "^2.1.0",
     "sqlite3": "^5.0.8",
     "superagent": "^7.1.6"

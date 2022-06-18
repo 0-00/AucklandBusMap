@@ -48,5 +48,6 @@ function query_nearest_point (x, y) {
 }
 
 module.exports = {
-    load_anchor_points
+    load_anchor_points,
+    query_nearest_point
 }
